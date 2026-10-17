@@ -63,7 +63,7 @@
             </div>
         </div>
 
-        <!-- اللوحة السريرية التمريضية على اليسار/ اليمين -->
+        <!-- اللوحة السريرية التمريضية على اليمين -->
         <div class="w-full lg:w-[460px] glass-panel border-t lg:border-t-0 lg:border-r border-gray-800 flex flex-col z-20 overflow-y-auto custom-scrollbar p-6 shrink-0 shadow-2xl">
             <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
                 <span id="organCategoryBadge" class="px-3.5 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">العضو المختار: القلب (Heart)</span>
@@ -89,7 +89,7 @@
                     <ul id="interventionsList" class="text-xs text-gray-300 space-y-2 list-disc list-inside leading-relaxed">
                         <li>فحص النبض القمي لمدة دقيقة كاملة قبل إعطاء دواء الديجوكسين (Digoxin).</li>
                         <li>مراقبة علامات هبوط الدورة الدموية وتوثيق معدل ضربات القلب.</li>
-                        <li>تحديد بدقة مواقع وضع أقطاب تخطيط القلب (ECG Leads V1-V6).</li>
+                        <li>تحديد بدقة مواقع وضع أقطاب تخطيط القلب الكهربائي (ECG Leads V1-V6).</li>
                     </ul>
                 </div>
 
@@ -207,7 +207,6 @@
             controls.minDistance = 3;
             controls.maxDistance = 20;
 
-            // إضاءة طبية سينمائية واقعية
             const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.9);
             scene.add(ambientLight);
 
@@ -231,9 +230,7 @@
             animate();
         }
 
-        // بناء مجسمات واقعية بجودة طبية عالية ومواد رطبة لامعة
         function buildRealisticAnatomy() {
-            // 1. الدماغ الواقعي (فصين متطትورين)
             const brainGroup = new THREE.Group();
             brainGroup.name = 'brain';
             const brainMat = new THREE.MeshPhysicalMaterial({ color: 0xf472b6, roughness: 0.3, metalness: 0.1, clearcoat: 0.5, clearcoatRoughness: 0.2 });
@@ -246,7 +243,6 @@
             scene.add(brainGroup);
             anatomicalParts['brain'] = { object: brainGroup, pos: new THREE.Vector3(0, 4.0, 0) };
 
-            // 2. القلب الواقعي (مع الأوعية الكبرى والأذينين والبطينين)
             const heartGroup = new THREE.Group();
             heartGroup.name = 'heart';
             const heartMat = new THREE.MeshPhysicalMaterial({ color: 0xef4444, roughness: 0.2, metalness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.1 });
@@ -254,7 +250,6 @@
             heartBase.position.set(0.3, 1.2, 0.3);
             heartBase.scale.set(0.9, 1.25, 0.95);
             
-            // الأبهر الشرياني
             const aortaMat = new THREE.MeshPhysicalMaterial({ color: 0xdc2626, roughness: 0.3 });
             const aorta = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.2, 16), aortaMat);
             aorta.position.set(0.2, 2.0, 0.2);
@@ -264,7 +259,6 @@
             scene.add(heartGroup);
             anatomicalParts['heart'] = { object: heartGroup, pos: new THREE.Vector3(0.3, 1.2, 0.3) };
 
-            // 3. الرئتان (بفصوص إسفنجية وردية)
             const lungsGroup = new THREE.Group();
             lungsGroup.name = 'lungs';
             const lungMat = new THREE.MeshPhysicalMaterial({ color: 0xfbcfe8, roughness: 0.6, transmission: 0.1 });
@@ -277,7 +271,6 @@
             scene.add(lungsGroup);
             anatomicalParts['lungs'] = { object: lungsGroup, pos: new THREE.Vector3(0, 1.2, 0) };
 
-            // 4. المعدة والأمعاء (تشريح هضمي واقعي)
             const stomachGroup = new THREE.Group();
             stomachGroup.name = 'stomach';
             const stomachMat = new THREE.MeshPhysicalMaterial({ color: 0xf59e0b, roughness: 0.4, clearcoat: 0.3 });
@@ -294,7 +287,6 @@
             scene.add(stomachGroup);
             anatomicalParts['stomach'] = { object: stomachGroup, pos: new THREE.Vector3(0, -1.1, 0.2) };
 
-            // 5. أوردة الذراع (لتركيب الكانيولا وسحب الدم)
             const armGroup = new THREE.Group();
             armGroup.name = 'arm';
             const veinMat = new THREE.MeshPhysicalMaterial({ color: 0x3b82f6, roughness: 0.2, clearcoat: 0.9 });
@@ -333,7 +325,6 @@
             if (!clinicalData[partKey]) return;
 
             const data = clinicalData[partKey];
-            document.getElementById('organCategoryBadge.innerText' = `العضو المختار: ${data.badge}`);
             document.getElementById('organCategoryBadge').innerText = `العضو المختار: ${data.badge}`;
             document.getElementById('organTitle').innerText = data.title;
             document.getElementById('organDescription').innerText = data.desc;
@@ -377,7 +368,6 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            // حركة نبض واقعية للقلب
             if (anatomicalParts['heart']) {
                 const time = Date.now() * 0.007;
                 const scale = 1 + Math.sin(time) * 0.07;
