@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
-        body { font-family: 'Tajawal', sans-serif; background-color: #0b0f19; color: #f3f4f6; overflow: hidden; }
+        body { font-family: 'Tajawal', sans-serif; background-color: #0b0f19; color: #f3f4f6; overflow: hidden; margin: 0; }
         .glass-panel { background: rgba(17, 24, 39, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
@@ -21,7 +21,7 @@
 <body class="h-screen flex flex-col">
 
     <!-- شريط العلوى -->
-    <header class="glass-panel h-16 border-b border-gray-800 flex items-center justify-between px-6 z-30">
+    <header class="glass-panel h-16 border-b border-gray-800 flex items-center justify-between px-6 z-30 shrink-0">
         <div class="flex items-center space-x-4 space-x-reverse">
             <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-black text-xl shadow-lg shadow-blue-500/30">🩺</div>
             <div>
@@ -43,8 +43,8 @@
     <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
         <!-- قسم العرض ثلاثي الأبعاد 3D -->
-        <div id="canvasContainer" class="flex-1 relative bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 flex items-center justify-center">
-            <div id="webgl-output" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+        <div id="canvasContainer" class="flex-1 relative bg-gradient-to-b from-gray-950 via-slate-900 to-gray-950 flex items-center justify-center min-h-[300px]">
+            <div id="webgl-output" class="w-full h-full absolute inset-0 cursor-grab active:cursor-grabbing"></div>
             
             <!-- أزرار التحكم بالطبقات عائمة على اليمين -->
             <div class="absolute right-4 top-4 glass-panel p-3 rounded-2xl flex flex-col space-y-2 z-10 shadow-2xl">
@@ -56,14 +56,14 @@
             </div>
 
             <!-- تنبيه تفاعلي عائم في الأسفل -->
-            <div class="absolute bottom-4 left-4 right-4 lg:right-auto glass-panel px-4 py-2 rounded-xl text-xs text-blue-300 flex items-center gap-2 shadow-lg">
+            <div class="absolute bottom-4 left-4 right-4 lg:right-auto glass-panel px-4 py-2 rounded-xl text-xs text-blue-300 flex items-center gap-2 z-10 shadow-lg">
                 <span>💡</span>
                 <span>انقر مباشرة على أي عضو في المجسم (الدماغ، القلب، الرئتين، المعدة) لتركيز الكاميرا وعرض تفاصيله السريرية.</span>
             </div>
         </div>
 
         <!-- اللوحة السريرية التمريضية على اليمين -->
-        <div class="w-full lg:w-[450px] glass-panel border-t lg:border-t-0 lg:border-r border-gray-800 flex flex-col z-20 overflow-y-auto custom-scrollbar p-6">
+        <div class="w-full lg:w-[450px] glass-panel border-t lg:border-t-0 lg:border-r border-gray-800 flex flex-col z-20 overflow-y-auto custom-scrollbar p-6 shrink-0">
             <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
                 <span id="organCategoryBadge" class="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full">العضو المختار: القلب (Heart)</span>
                 <button onclick="speakCurrentInfo()" class="p-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-sm transition" title="استماع للشرح">🔊</button>
@@ -188,11 +188,14 @@
             const container = document.getElementById('webgl-output');
             scene = new THREE.Scene();
 
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            const width = container.clientWidth || window.innerWidth * 0.6;
+            const height = container.clientHeight || window.innerHeight * 0.8;
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
             camera.position.set(0, 2, 12);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setSize(width, height);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
@@ -370,9 +373,12 @@
 
         function onWindowResize() {
             const container = document.getElementById('canvasContainer');
-            camera.aspect = container.clientWidth / container.clientHeight;
+            if (!container) return;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
             camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setSize(width, height);
         }
 
         function resetCamera() {
