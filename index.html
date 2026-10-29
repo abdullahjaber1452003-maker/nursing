@@ -21,19 +21,25 @@
 <body class="h-screen flex flex-col">
 
     <!-- شريط العلوى -->
-    <header class="glass-panel h-16 border-b border-gray-800 flex items-center justify-between px-6 z-30 shrink-0 shadow-xl">
-        <div class="flex items-center space-x-4 space-x-reverse">
+    <header class="glass-panel min-h-[64px] py-2 border-b border-gray-800 flex flex-wrap items-center justify-between px-4 lg:px-6 z-30 shrink-0 shadow-xl gap-2">
+        <div class="flex items-center space-x-3 space-x-reverse">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-xl shadow-lg shadow-blue-500/40">🩺</div>
             <div>
-                <h1 class="font-bold text-lg text-white">التشريح السريري والتطبيقي للتمريض</h1>
-                <p class="text-xs text-blue-400">Clinical & Applied Nursing Anatomy 3D (Medical Grade)</p>
+                <h1 class="font-bold text-base lg:text-lg text-white">التشريح السريري والتطبيقي للتمريض</h1>
+                <p class="text-[11px] lg:text-xs text-blue-400">Clinical & Applied Nursing Anatomy 3D (Medical Grade)</p>
             </div>
         </div>
-        <div class="flex items-center space-x-3 space-x-reverse">
-            <button onclick="resetCamera()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-gray-200 rounded-lg text-xs font-semibold transition flex items-center gap-2 border border-gray-700 shadow">
+        <div class="flex flex-wrap items-center gap-2">
+            <button id="isolateBtn" onclick="toggleIsolateMode()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-gray-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-gray-700 shadow">
+                🔬 <span>وضع العزل: متوقف</span>
+            </button>
+            <button id="landmarksBtn" onclick="toggleLandmarks3D()" class="px-3 py-2 bg-blue-900/60 hover:bg-blue-800 text-blue-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-blue-500/40 shadow">
+                📍 <span>نقاط الفحص: مفعلة</span>
+            </button>
+            <button onclick="resetCamera()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-gray-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-gray-700 shadow">
                 🔄 <span>إعادة ضبط المنظور</span>
             </button>
-            <button onclick="takeSnapshot()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-2 shadow">
+            <button onclick="takeSnapshot()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow">
                 📸 <span>لقطة شاشة طبية</span>
             </button>
         </div>
@@ -43,36 +49,73 @@
     <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
         <!-- قسم العرض ثلاثي الأبعاد الواقعي -->
-        <div id="canvasContainer" class="flex-1 relative bg-gradient-to-b from-gray-950 via-slate-900 to-slate-950 flex items-center justify-center min-h-[350px]">
+        <div id="canvasContainer" class="flex-1 relative bg-gradient-to-b from-gray-950 via-slate-900 to-slate-950 flex items-center justify-center min-h-[360px]">
             <div id="webgl-output" class="w-full h-full absolute inset-0 cursor-grab active:cursor-grabbing"></div>
             
+            <!-- شاشة مونيتور العلامات الحيوية والمحاكاة السريرية (يسار المشهد) -->
+            <div class="absolute left-3 top-3 glass-panel p-3 rounded-2xl flex flex-col space-y-2.5 z-10 shadow-2xl w-48 lg:w-56 border border-gray-800">
+                <div class="flex items-center justify-between border-b border-gray-800 pb-1.5">
+                    <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                        <span id="monitorDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        مونيتور العلامات الحيوية
+                    </span>
+                    <span id="simStatusBadge" class="text-[10px] px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded">مستقر</span>
+                </div>
+                <div class="grid grid-cols-3 gap-1.5 text-center">
+                    <div class="bg-slate-900/90 p-1.5 rounded-lg border border-gray-800">
+                        <div class="text-[10px] text-gray-400">HR (BPM)</div>
+                        <div id="hrValue" class="text-sm font-black text-emerald-400">76</div>
+                    </div>
+                    <div class="bg-slate-900/90 p-1.5 rounded-lg border border-gray-800">
+                        <div class="text-[10px] text-gray-400">SpO2 (%)</div>
+                        <div id="spo2Value" class="text-sm font-black text-sky-400">98%</div>
+                    </div>
+                    <div class="bg-slate-900/90 p-1.5 rounded-lg border border-gray-800">
+                        <div class="text-[10px] text-gray-400">RR (/min)</div>
+                        <div id="rrValue" class="text-sm font-black text-amber-400">16</div>
+                    </div>
+                </div>
+                <div class="space-y-1 pt-1 border-t border-gray-800">
+                    <span class="text-[10px] text-gray-400 block mb-1">محاكاة الحالات السريرية:</span>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button onclick="setSimulationMode('normal')" id="sim-normal" class="px-1.5 py-1 bg-blue-600 text-white rounded text-[10px] font-bold transition">طبيعي</button>
+                        <button onclick="setSimulationMode('bradycardia')" id="sim-bradycardia" class="px-1.5 py-1 bg-slate-800 hover:bg-slate-700 text-gray-300 rounded text-[10px] font-medium transition" title="نبض أقل من 60 - تحذير ديجوكسين">بطء &lt;60</button>
+                        <button onclick="setSimulationMode('tachycardia')" id="sim-tachycardia" class="px-1.5 py-1 bg-slate-800 hover:bg-slate-700 text-gray-300 rounded text-[10px] font-medium transition" title="تسرع القلب وضيق تنفس">تسرع/إجهاد</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- أزرار التحكم بالطبقات والأعضاء عائمة على اليمين -->
-            <div class="absolute right-4 top-4 glass-panel p-3 rounded-2xl flex flex-col space-y-2 z-10 shadow-2xl w-48">
+            <div class="absolute right-3 top-3 glass-panel p-2.5 lg:p-3 rounded-2xl flex flex-col space-y-1.5 z-10 shadow-2xl w-44 lg:w-48 max-h-[82%] overflow-y-auto custom-scrollbar">
                 <span class="text-xs font-bold text-blue-400 text-center mb-1 pb-1 border-b border-gray-800">الأعضاء والأنظمة</span>
-                <button onclick="focusOnPart('brain')" class="px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>الدماغ والوعي</span> 🧠</button>
-                <button onclick="focusOnPart('heart')" class="px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>القلب والنبض</span> 🫀</button>
-                <button onclick="focusOnPart('lungs')" class="px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>الرئتان والتنفس</span> 🫁</button>
-                <button onclick="focusOnPart('stomach')" class="px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>المعدة والأمعاء</span> 🦠</button>
-                <button onclick="focusOnPart('arm')" class="px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>أوردة الكانيولا</span> 💉</button>
+                <button id="btn-brain" onclick="focusOnPart('brain')" class="organ-btn px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>الدماغ والوعي</span> 🧠</button>
+                <button id="btn-heart" onclick="focusOnPart('heart')" class="organ-btn px-3 py-2 bg-blue-600 text-white text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>القلب والنبض</span> 🫀</button>
+                <button id="btn-lungs" onclick="focusOnPart('lungs')" class="organ-btn px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>الرئتان والتنفس</span> 🫁</button>
+                <button id="btn-liver" onclick="focusOnPart('liver')" class="organ-btn px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>الكبد والمرارة</span> 🧪</button>
+                <button id="btn-stomach" onclick="focusOnPart('stomach')" class="organ-btn px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>المعدة والأمعاء</span> 🦠</button>
+                <button id="btn-kidneys" onclick="focusOnPart('kidneys')" class="organ-btn px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>الكليتان والقسطرة</span> 🫘</button>
+                <button id="btn-arm" onclick="focusOnPart('arm')" class="organ-btn px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between"><span>أوردة الكانيولا</span> 💉</button>
             </div>
 
             <!-- تنبيه تفاعلي عائم في الأسفل -->
-            <div class="absolute bottom-4 left-4 right-4 lg:right-auto glass-panel px-4 py-2.5 rounded-xl text-xs text-blue-300 flex items-center gap-2 z-10 shadow-lg border border-blue-500/20">
+            <div class="absolute bottom-3 left-3 right-3 lg:right-auto glass-panel px-4 py-2 rounded-xl text-[11px] lg:text-xs text-blue-300 flex items-center gap-2 z-10 shadow-lg border border-blue-500/20">
                 <span class="text-base">💡</span>
-                <span>انقر مباشرة على أي عضو في المجسم (أو القائمة الجانبية) لتفعيل الكاميرا الذكية وعرض البروتوكول التمريضي السريري.</span>
+                <span>انقر على أي عضو بالمجسم أو القائمة لتفعيل الكاميرا الذكية، النقاط التشريحية، والاختبار السريري.</span>
             </div>
         </div>
 
         <!-- اللوحة السريرية التمريضية على اليمين -->
-        <div class="w-full lg:w-[460px] glass-panel border-t lg:border-t-0 lg:border-r border-gray-800 flex flex-col z-20 overflow-y-auto custom-scrollbar p-6 shrink-0 shadow-2xl">
+        <div class="w-full lg:w-[460px] max-h-[50vh] lg:max-h-none glass-panel border-t lg:border-t-0 lg:border-r border-gray-800 flex flex-col z-20 overflow-y-auto custom-scrollbar p-5 lg:p-6 shrink-0 shadow-2xl">
             <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
-                <span id="organCategoryBadge" class="px-3.5 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">العضو المختار: القلب (Heart)</span>
-                <button onclick="speakCurrentInfo()" class="p-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-sm transition border border-gray-700" title="استماع صوتي للشرح">🔊</button>
+                <span id="organCategoryBadge" class="px-3.5 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">العضو المختار: القلب والجهاز الدوري (Cardiovascular)</span>
+                <button onclick="speakCurrentInfo()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-xs font-semibold transition border border-gray-700 flex items-center gap-1" title="استماع صوتي للشرح الكامل">
+                    🔊 <span>قراءة صوتية</span>
+                </button>
             </div>
 
-            <h2 id="organTitle" class="text-xl font-black text-white mb-2 leading-snug">القلب والجهاز الدوري (Cardiovascular System)</h2>
-            <p id="organDescription" class="text-sm text-gray-300 leading-relaxed mb-6">
-                عضو عضلي أجوف يضخ الدم عبر الأوعية الدموية في جهاز الدوران. يتكون من أربع حجرات (أذينين وبطينين) وصمامات تضمن اتجاه واحد للدم.
+            <h2 id="organTitle" class="text-xl font-black text-white mb-2 leading-snug">القلب (Heart) والعلامات الحيوية</h2>
+            <p id="organDescription" class="text-sm text-gray-300 leading-relaxed mb-5">
+                عضو عضلي أجوف يضخ الدم عبر الأوعية الدموية في جهاز الدوران. يتكون من أربع حجرات وصمامات دقيقة.
             </p>
 
             <div class="space-y-4">
@@ -80,7 +123,7 @@
                     <h3 class="text-sm font-bold text-blue-400 mb-2 flex items-center gap-2"><span>📌</span> المعالم التشريحية للتمريض:</h3>
                     <ul id="landmarksList" class="text-xs text-gray-300 space-y-2 list-disc list-inside leading-relaxed">
                         <li>تحديد النبض القمي (Apical Pulse) في المساحة الوربية الخامسة (5th Intercostal Space).</li>
-                        <li>خط منتصف الترقوة الأيسر (Midclavicular Line) لسماع أصوات الصمامات بوضوح.</li>
+                        <li>خط منتصف الترقوة الأيسر لسماع أصوات الصمامات بوضوح بالسماعة الطبية.</li>
                     </ul>
                 </div>
 
@@ -88,16 +131,26 @@
                     <h3 class="text-sm font-bold text-emerald-400 mb-2 flex items-center gap-2"><span>🩺</span> التدخلات والإجراءات السريرية (Nursing Interventions):</h3>
                     <ul id="interventionsList" class="text-xs text-gray-300 space-y-2 list-disc list-inside leading-relaxed">
                         <li>فحص النبض القمي لمدة دقيقة كاملة قبل إعطاء دواء الديجوكسين (Digoxin).</li>
-                        <li>مراقبة علامات هبوط الدورة الدموية وتوثيق معدل ضربات القلب.</li>
-                        <li>تحديد بدقة مواقع وضع أقطاب تخطيط القلب الكهربائي (ECG Leads V1-V6).</li>
+                        <li>تحديد أماكن وضع أقطاب تخطيط القلب الكهربائي (ECG Leads V1-V6) بدقة.</li>
                     </ul>
                 </div>
 
                 <div class="bg-red-950/40 p-4 rounded-xl border border-red-900/60 shadow-inner">
                     <h3 class="text-sm font-bold text-red-400 mb-2 flex items-center gap-2"><span>⚠️</span> تنبيهات سريرية حمراء (Red Flags):</h3>
                     <p id="redFlagsText" class="text-xs text-red-200 leading-relaxed font-medium">
-                        إذا كان نبض المريض أقل من 60 نبضة في الدقيقة، امتنع فوراً عن إعطاء الديجوكسين وأبلغ الطبيب المشرف.
+                        إذا كان نبض المريض أقل من 60 نبضة في الدقيقة، امتنع عن إعطاء الديجوكسين وأبلغ الطبيب فوراً.
                     </p>
+                </div>
+
+                <!-- قسم سؤال الحالة السريرية التفاعلي -->
+                <div id="quizContainer" class="bg-indigo-950/30 p-4 rounded-xl border border-indigo-500/30 shadow-inner">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-bold text-indigo-300 flex items-center gap-2"><span>🧠</span> سؤال حالة سريرية (Clinical Quiz):</h3>
+                        <span class="text-[10px] px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-full">اختبر معلوماتك</span>
+                    </div>
+                    <p id="quizQuestion" class="text-xs text-gray-200 font-semibold mb-3 leading-relaxed"></p>
+                    <div id="quizOptions" class="space-y-2"></div>
+                    <div id="quizFeedback" class="hidden mt-3 p-2.5 rounded-lg text-xs font-medium leading-relaxed"></div>
                 </div>
             </div>
         </div>
@@ -108,8 +161,22 @@
     <script>
         let scene, camera, renderer, controls;
         let anatomicalParts = {};
+        let landmarks3DGroup;
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
+
+        let currentFocusedPart = 'heart';
+        let isIsolateMode = false;
+        let showLandmarks3D = true;
+
+        // حالة المحاكاة للعلامات الحيوية
+        let simState = {
+            mode: 'normal',
+            heartSpeed: 0.007,
+            heartAmp: 0.07,
+            breathSpeed: 0.003,
+            breathAmp: 0.05
+        };
 
         const clinicalData = {
             brain: {
@@ -117,14 +184,28 @@
                 title: "الدماغ (Brain) ومستوى الوعي الإدراكي",
                 desc: "مركز التحكم الرئيسي في الجهاز العصبي المركزي، مسؤول عن تنظيم الوظائف الحيوية، الإدراك، والاستجابة الحركية.",
                 landmarks: [
-                    "تقييم مستوى الوعي باستخدام مقياس غلاسكو للغيبوبة (GCS).",
-                    "فحص تفاعل بؤبؤ العين للضوء (Pupillary Reflex) ومقاس البؤبؤ."
+                    "تقييم مستوى الوعي باستخدام مقياس غلاسكو للغيبوبة (GCS) من 3 إلى 15 درجة.",
+                    "فحص تفاعل بؤبؤ العين للضوء (Pupillary Reflex - PERRLA) ومقاس البؤبؤ."
                 ],
                 interventions: [
-                    "مراقبة علامات ارتفاع ضغط الدماغ intracranial pressure (ICP) مثل الصداع والقشعريرة.",
-                    "توثيق درجة استجابة المريض للمؤلفات الحركية واللفظية."
+                    "مراقبة علامات ارتفاع الضغط داخل القحف (ICP) مثل ثالوث كوشينغ (ارتفاع الضغط، بطء النبض، اضطراب التنفس).",
+                    "رفع رأس السرير بزاوية 30 درجة لتحسين التصريف الوريدي الدماغي وتوثيق الاستجابة الحركية."
                 ],
-                redFlags: "أي توسع مفاجئ وغير متناظر في بؤبؤ العين يعتبر طارئاً عصبياً خطيراً يستوجب التنبيه الفوري."
+                redFlags: "أي توسع مفاجئ وغير متناظر في بؤبؤ العين (Anisocoria) أو هبوط بدرجة GCS بمقدار نقطتين أو أكثر يعتبر طارئاً عصبياً خطيراً.",
+                pins: [
+                    { pos: [0.4, 4.7, 0.9], label: "الفص الجبهي (تقييم الوعي والنطق)" },
+                    { pos: [-0.4, 4.2, 1.0], label: "منعكس الحدقة (Pupillary Reflex)" }
+                ],
+                quiz: {
+                    question: "مريض تعرض لإصابة رأس ولديه تفاعل بؤبؤ غير متناظر مع هبوط في مقياس GCS من 14 إلى 11. ما هو التدخل التمريضي الأول؟",
+                    options: [
+                        "إبلاغ الطبيب فوراً مع إبقاء رأس السرير مرفوعاً بزاوية 30 درجة",
+                        "وضع المريض بوضعية الاستلقاء المسطح الكامل (Supine)",
+                        "إعطاء سوائل وريدية منخفضة التوتر بسرعة عالية"
+                    ],
+                    correct: 0,
+                    explanation: "صحيح! عدم تناظر البؤبؤ وهبوط GCS يدلان على ارتفاع حاد في ضغط الدماغ (ICP)؛ يجب إبلاغ الطبيب فوراً ورفع الرأس 30 درجة."
+                }
             },
             heart: {
                 badge: "القلب والجهاز الدوري (Cardiovascular)",
@@ -132,13 +213,27 @@
                 desc: "عضو عضلي أجوف يضخ الدم عبر الأوعية الدموية في جهاز الدوران. يتكون من أربع حجرات وصمامات دقيقة.",
                 landmarks: [
                     "تحديد النبض القمي (Apical Pulse) في المساحة الوربية الخامسة (5th Intercostal Space).",
-                    "خط منتصف الترقوة الأيسر لسماع أصوات الصمامات بوضوح بالسماعة الطبية."
+                    "خط منتصف الترقوة الأيسر (Midclavicular Line) لسماع أصوات الصمامات بوضوح بالسماعة الطبية."
                 ],
                 interventions: [
                     "فحص النبض القمي لمدة دقيقة كاملة قبل إعطاء دواء الديجوكسين (Digoxin).",
                     "تحديد أماكن وضع أقطاب تخطيط القلب الكهربائي (ECG Leads V1-V6) بدقة."
                 ],
-                redFlags: "إذا كان نبض المريض أقل من 60 نبضة في الدقيقة، امتنع عن إعطاء الديجوكسين وأبلغ الطبيب فوراً."
+                redFlags: "إذا كان نبض المريض أقل من 60 نبضة في الدقيقة، امتنع عن إعطاء الديجوكسين وأبلغ الطبيب فوراً.",
+                pins: [
+                    { pos: [0.65, 0.85, 0.95], label: "النبض القمي (5th ICS MCL)" },
+                    { pos: [0.1, 1.8, 0.85], label: "بؤرة الصمام الأبهري / V1-V2" }
+                ],
+                quiz: {
+                    question: "قبل إعطاء جرعة الديجوكسين (Digoxin)، قمت بقياس النبض القمي للمريض لمدة دقيقة فكان 52 نبضة/دقيقة. ماذا تفعل؟",
+                    options: [
+                        "إعطاء نصف الجرعة الموصوفة فقط",
+                        "إيقاف إعطاء الدواء (Hold) وتوثيق النبض وإبلاغ الطبيب المشرف",
+                        "إعطاء الدواء ثم إعادة قياس النبض بعد ساعة"
+                    ],
+                    correct: 1,
+                    explanation: "أحسنت! يُمنع إعطاء الديجوكسين إذا كان النبض القمي أقل من 60 نبضة/دقيقة لدى البالغين لتجنب بطء القلب الشديد والتسمم بالديجوكسين."
+                }
             },
             lungs: {
                 badge: "الجهاز التنفسي (Respiratory System)",
@@ -152,21 +247,105 @@
                     "قياس نسبة تشبع الأكسجين في الدم (SpO2) عبر مقياس التأكسج النبضي المستمر.",
                     "مساعدة المريض على اتخاذ وضعية الجلوس (High Fowler's Position) لتوسيع الرئتين وتسهيل التنفس."
                 ],
-                redFlags: "زرقة الشفاه أو الأطراف (Cyanosis) تشير إلى نقص حاد في الأكسجين وتتطلب تدخلاً طارئاً."
+                redFlags: "زرقة الشفاه أو الأطراف (Cyanosis) أو هبوط SpO2 عن 90% تشير إلى نقص حاد في الأكسجين وتتطلب تدخلاً طارئاً.",
+                pins: [
+                    { pos: [-1.2, 1.8, 0.75], label: "قمة الرئة اليمنى (Auscultation)" },
+                    { pos: [1.3, 0.6, 0.75], label: "قاعدة الرئة اليسرى" }
+                ],
+                quiz: {
+                    question: "مريض يعاني من زلة تنفسية حادة وانخفاض في تشبع الأكسجين (SpO2 = 88%). ما هي الوضعية التمريضية الفورية الأنسب له؟",
+                    options: [
+                        "وضعية ترندلنبورغ (Trendelenburg Position)",
+                        "وضعية الجلوس العالي (High Fowler's Position) مع إعطاء الأكسجين",
+                        "وضعية الاستلقاء الجانبي المسطح"
+                    ],
+                    correct: 1,
+                    explanation: "صحيح! وضعية High Fowler's (60-90 درجة) تسمح بنزول الحجاب الحاجز للأسفل وتمنح الرئتين أقصى مساحة للتمدد."
+                }
+            },
+            liver: {
+                badge: "الكبد والقنوات الصفراوية (Hepatobiliary)",
+                title: "الكبد والمرارة (Liver & Gallbladder)",
+                desc: "أكبر غدة في الجسم، تقع في الربع العلوي الأيمن للبطن، مسؤولة عن استقلاب الأدوية، تصنيع عوامل التخثر والألبومين، وإفراز العصارة الصفراوية.",
+                landmarks: [
+                    "الربع العلوي الأيمن للبطن (Right Upper Quadrant - RUQ) أسفل الحافة الضلعية اليمنى.",
+                    "نقطة مورفي (Murphy's Sign) لتقييم التهاب المرارة الحاد عند الشهيق العميق."
+                ],
+                interventions: [
+                    "مراقبة التحاليل المخبرية لوظائف الكبد (ALT, AST, Bilirubin) وزمن التخثر (PT/INR) قبل أي إجراء باضع.",
+                    "قياس محيط البطن يومياً ومراقبة علامات الحبن (Ascites) أو اليرقان في الصلبة والجلد."
+                ],
+                redFlags: "ظهور تخليط ذهني أو رعشة خافقة في اليدين (Asterixis) لدى مريض الكبد يدل على اعتلال دماغي كبدي ناتج عن ارتفاع الأمونيا.",
+                pins: [
+                    { pos: [-0.9, -0.1, 0.8], label: "الفص الكبدي الأيمن (RUQ)" },
+                    { pos: [-0.6, -0.45, 0.85], label: "نقطة فحص المرارة (Murphy's point)" }
+                ],
+                quiz: {
+                    question: "قبل تحضير مريض لإجراء خزعة الكبد (Liver Biopsy)، أي فحص مخبري يجب على الممرض التحقق منه بشكل حاسم لمنع النزيف؟",
+                    options: [
+                        "زمن البروثرومبين ومؤشر السيولة (PT / INR) والصفائح الدموية",
+                        "مستوى الكالسيوم والصوديوم فقط",
+                        "فحص سكر الدم الصباحي"
+                    ],
+                    correct: 0,
+                    explanation: "صحيح! الكبد يصنع عوامل التخثر، وأي خلل في PT/INR يعرض المريض لخطر نزيف داخلي شديد بعد الخزعة."
+                }
             },
             stomach: {
                 badge: "الجهاز الهضمي (Gastrointestinal)",
                 title: "المعدة والأمعاء (Stomach & Intestines)",
-                desc: "الجهاز المسؤول عن هضم الطعام، امتصاص العناصر الغذائية، وتنظيم التوازن السويلي.",
+                desc: "الجهاز المسؤول عن هضم الطعام، امتصاص العناصر الغذائية، وتنظيم التوازن السوائلي والشوارد.",
                 landmarks: [
                     "قياس المسافة لتركيب أنبوب التغذية الأنفي المعدي (NG Tube): من أنف المريض إلى شحمة الأذن ثم إلى النتوء الخنجري (NEX Measurement).",
-                    "فحص أرباع البطن الأربعة لسماع وتقييم الأصوات المعوية (Bowel Sounds)."
+                    "فحص أرباع البطن الأربعة لسماع وتقييم الأصوات المعوية (Bowel Sounds) بدءاً من الربع السفلي الأيمن (RLQ)."
                 ],
                 interventions: [
-                    "التأكد حصرياً من موقع الـ NG Tube عبر فحص الحموضة pH أو الأشعة السينية قبل البدء بأي إطعام أو أدوية.",
-                    "مراقبة حركة الأمعاء وتوثيق الإخراج بدقة."
+                    "التأكد حصرياً من موقع الـ NG Tube عبر فحص الحموضة (pH ≤ 5.5) أو الأشعة السينية قبل البدء بأي إطعام أو أدوية.",
+                    "مراقبة حركة الأمعاء وتوثيق توازن السوائل (Intake & Output) بدقة."
                 ],
-                redFlags: "صلابة البطن أو الألم الشديد المفاجئ قد يدل على انثقاب في الجهاز الهضمي يستدعي التدخل الجراحي."
+                redFlags: "صلابة البطن الخشبية (Board-like rigidity) أو الألم الشديد المفاجئ قد يدل على انثقاب في الجهاز الهضمي والتهاب الصفاق.",
+                pins: [
+                    { pos: [0.3, -0.5, 0.85], label: "المنطقة الشرسوفية / موقع NG Tube" },
+                    { pos: [-0.7, -1.7, 0.7], label: "الربع السفلي الأيمن (RLQ - نقطة ماكبيرني)" }
+                ],
+                quiz: {
+                    question: "ما هي الطريقة الأدق (المعيار الذهبي) للتأكد من وجود أنبوب التغذية الأنفي المعدي (NG Tube) في المعدة قبل بدء التغذية؟",
+                    options: [
+                        "تصوير الصدر والبطن بالأشعة السينية (X-Ray) وفحص حموضة السائل المسحوب",
+                        "حقن الهواء والاستماع بالسماعة فقط",
+                        "سؤال المريض إذا كان يشعر بالأنبوب في معدته"
+                    ],
+                    correct: 0,
+                    explanation: "صحيح! الأشعة السينية (X-Ray) هي المعيار الذهبي يليها فحص pH السائل المعدي لتجنب دخول التغذية إلى الرئتين."
+                }
+            },
+            kidneys: {
+                badge: "الجهاز البولي والكلوي (Renal & Urinary)",
+                title: "الكليتان وتوازن السوائل (Kidneys & Urinary Output)",
+                desc: "عضوان يقعان خلف الصفاق (Retroperitoneal) على جانبي العمود الفقري، ينظمان توازن السوائل والشوارد، ضغط الدم، وطرح الفضلات الاستقلابية.",
+                landmarks: [
+                    "الزاوية الضلعية الفقرية (Costovertebral Angle - CVA) في الظهر لفحص إيلام الكلية.",
+                    "فوق العانة (Suprapubic area) لجس امتلاء المثانة وتقييم احتباس البول."
+                ],
+                interventions: [
+                    "تطبيق تقنية التعقيم الجراحي الصارم (Sterile Technique) عند تركيب القسطرة البولية (Foley Catheter) لمنع التهاب المسالك (CAUTI).",
+                    "مراقبة الصبيب البولي بالساعة (Hourly Urine Output) وفحص وظائف الكلى (Creatinine, BUN, Potassium)."
+                ],
+                redFlags: "انخفاض إدرار البول عن 30 مل/ساعة (Oliguria) أو ارتفاع البوتاسيوم الحاد (Hyperkalemia) يتطلب إبلاغ الطبيب الفوري.",
+                pins: [
+                    { pos: [-0.85, -0.9, -0.15], label: "الكلية اليمنى" },
+                    { pos: [0.85, -0.8, -0.15], label: "الكلية اليسرى" }
+                ],
+                quiz: {
+                    question: "مريض بالغ مركب له قسطرة بولية (Foley Catheter)، ما هو الحد الأدنى الطبيعي لإدرار البول في الساعة الذي يجب ألا يقل عنه؟",
+                    options: [
+                        "10 مل / ساعة",
+                        "30 مل / ساعة (أو 0.5 مل/كغ/ساعة)",
+                        "150 مل / ساعة"
+                    ],
+                    correct: 1,
+                    explanation: "أحسنت! إدرار البول أقل من 30 مل/ساعة يعد شح بول (Oliguria) ويدل على نقص التروية الكلوية أو قصور كلوي حاد."
+                }
             },
             arm: {
                 badge: "الأوعية والأطراف (Vascular Access)",
@@ -174,15 +353,37 @@
                 desc: "الشبكة الوريدية السطحية في الذراع واليد المستخدمة لسحب الدم وإعطاء السوائل والأدوية الوريدية.",
                 landmarks: [
                     "الوريد المرفقي الأوسط (Median Cubital Vein) لسحب عينات الدم الآمنة.",
-                    "أوردة Cephalic و Basilic لتركيب القسطرة الوريدية الطرفية."
+                    "أوردة Cephalic و Basilic في الساعد لتركيب القسطرة الوريدية الطرفية (IV Cannula)."
                 ],
                 interventions: [
-                    "اختيار مقاس الكانيولا المناسب لحالة المريض (مثلاً 18G للسوائل السريعة، 20G/22G للأدوية الاعتيادية).",
-                    "تعقيم مكان الوخز بحركة دائرية واسعة وربط التورنيكيه باعتدال لتقليل الضغط."
+                    "اختيار مقاس الكانيولا المناسب لحالة المريض (مثلاً 18G الخضراء للسوائل السريعة ونقل الدم، 20G الوردية أو 22G الزرقاء للأدوية الاعتيادية).",
+                    "تعقيم مكان الوخز بالكلورهيكسيدين أو الكحول بحركة دائرية وربط التورنيكيه على بعد 10-15 سم فوق موقع الوخز."
                 ],
-                redFlags: "حدوث تورم موضعي أو ألم حاد أثناء حقن المحلول يدل على خروج الكانيولا خارج الوريد (Infiltration)."
+                redFlags: "حدوث تورم موضعي، برودة، أو ألم حاد أثناء حقن المحلول يدل على التسرب الوريدي (Infiltration/Extravasation) ويستوجب إيقاف الضخ فوراً.",
+                pins: [
+                    { pos: [3.2, 0.3, 0.65], label: "الحفرة المرفقية (Median Cubital Vein)" },
+                    { pos: [3.8, -0.7, 0.65], label: "الوريد الكعبري السطحي (Cephalic Vein)" }
+                ],
+                quiz: {
+                    question: "أثناء تسريب محلول وريدي، لاحظت تورماً وشحوباً وبرودة في الجلد حول موقع الكانيولا مع بطء في التقطير. ما هو التشخيص والتصرف الصحيح؟",
+                    options: [
+                        "تسرب وريدي (Infiltration)؛ يجب إيقاف التسريب فوراً وإزالة الكانيولا ورفع الذراع",
+                        "أمر طبيعي؛ يجب زيادة سرعة التقطير لفتح الوريد",
+                        "حقن محلول ملحي بقوة داخل الكانيولا"
+                    ],
+                    correct: 0,
+                    explanation: "صحيح! البرودة والتورم والشحوب علامات كلاسيكية لخروج السائل للأنسجة (Infiltration)، ويجب إيقاف التسريب وإزالة الكانيولا فوراً."
+                }
             }
         };
+
+        function createCapsuleCompat(radius, length, capSegments, radialSegments, material) {
+            if (typeof THREE.CapsuleGeometry !== 'undefined') {
+                return new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, capSegments, radialSegments), material);
+            }
+            const cyl = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length + radius, radialSegments), material);
+            return cyl;
+        }
 
         function init3D() {
             const container = document.getElementById('webgl-output');
@@ -203,8 +404,8 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.06;
-            controls.maxPolarAngle = Math.PI / 1.5;
-            controls.minDistance = 3;
+            controls.maxPolarAngle = Math.PI / 1.4;
+            controls.minDistance = 2.5;
             controls.maxDistance = 20;
 
             const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.9);
@@ -222,7 +423,12 @@
             backLight.position.set(5, -5, -5);
             scene.add(backLight);
 
+            landmarks3DGroup = new THREE.Group();
+            scene.add(landmarks3DGroup);
+
             buildRealisticAnatomy();
+            renderQuiz('heart');
+            updateLandmarkPins('heart');
 
             window.addEventListener('resize', onWindowResize);
             renderer.domElement.addEventListener('click', onDocumentClick);
@@ -231,9 +437,10 @@
         }
 
         function buildRealisticAnatomy() {
+            // 1. الدماغ (Brain)
             const brainGroup = new THREE.Group();
             brainGroup.name = 'brain';
-            const brainMat = new THREE.MeshPhysicalMaterial({ color: 0xf472b6, roughness: 0.3, metalness: 0.1, clearcoat: 0.5, clearcoatRoughness: 0.2 });
+            const brainMat = new THREE.MeshPhysicalMaterial({ color: 0xf472b6, roughness: 0.3, metalness: 0.1, clearcoat: 0.5, clearcoatRoughness: 0.2, transparent: true, opacity: 1 });
             const cerebrum = new THREE.Mesh(new THREE.SphereGeometry(1.1, 32, 32), brainMat);
             cerebrum.position.set(0, 4.3, 0);
             cerebrum.scale.set(1.25, 0.95, 1.15);
@@ -243,14 +450,15 @@
             scene.add(brainGroup);
             anatomicalParts['brain'] = { object: brainGroup, pos: new THREE.Vector3(0, 4.0, 0) };
 
+            // 2. القلب (Heart)
             const heartGroup = new THREE.Group();
             heartGroup.name = 'heart';
-            const heartMat = new THREE.MeshPhysicalMaterial({ color: 0xef4444, roughness: 0.2, metalness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.1 });
+            const heartMat = new THREE.MeshPhysicalMaterial({ color: 0xef4444, roughness: 0.2, metalness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.1, transparent: true, opacity: 1 });
             const heartBase = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 32), heartMat);
             heartBase.position.set(0.3, 1.2, 0.3);
             heartBase.scale.set(0.9, 1.25, 0.95);
             
-            const aortaMat = new THREE.MeshPhysicalMaterial({ color: 0xdc2626, roughness: 0.3 });
+            const aortaMat = new THREE.MeshPhysicalMaterial({ color: 0xdc2626, roughness: 0.3, transparent: true, opacity: 1 });
             const aorta = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.2, 16), aortaMat);
             aorta.position.set(0.2, 2.0, 0.2);
             aorta.rotation.z = -0.3;
@@ -259,9 +467,10 @@
             scene.add(heartGroup);
             anatomicalParts['heart'] = { object: heartGroup, pos: new THREE.Vector3(0.3, 1.2, 0.3) };
 
+            // 3. الرئتان (Lungs)
             const lungsGroup = new THREE.Group();
             lungsGroup.name = 'lungs';
-            const lungMat = new THREE.MeshPhysicalMaterial({ color: 0xfbcfe8, roughness: 0.6, transmission: 0.1 });
+            const lungMat = new THREE.MeshPhysicalMaterial({ color: 0xfbcfe8, roughness: 0.6, transmission: 0.1, transparent: true, opacity: 0.95 });
             const rightLung = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 2.6, 32), lungMat);
             rightLung.position.set(-1.25, 1.2, 0);
             rightLung.scale.set(1, 1, 0.8);
@@ -271,15 +480,34 @@
             scene.add(lungsGroup);
             anatomicalParts['lungs'] = { object: lungsGroup, pos: new THREE.Vector3(0, 1.2, 0) };
 
+            // 4. الكبد والمرارة (Liver & Gallbladder)
+            const liverGroup = new THREE.Group();
+            liverGroup.name = 'liver';
+            const liverMat = new THREE.MeshPhysicalMaterial({ color: 0x991b1b, roughness: 0.35, clearcoat: 0.6, transparent: true, opacity: 1 });
+            const liverMain = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 32), liverMat);
+            liverMain.position.set(-0.75, -0.15, 0.25);
+            liverMain.scale.set(1.35, 0.65, 0.85);
+            liverMain.rotation.z = 0.2;
+
+            const gallbladderMat = new THREE.MeshPhysicalMaterial({ color: 0x10b981, roughness: 0.3, clearcoat: 0.7, transparent: true, opacity: 1 });
+            const gallbladder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 20), gallbladderMat);
+            gallbladder.position.set(-0.6, -0.5, 0.55);
+            gallbladder.scale.set(0.8, 1.3, 0.8);
+
+            liverGroup.add(liverMain, gallbladder);
+            scene.add(liverGroup);
+            anatomicalParts['liver'] = { object: liverGroup, pos: new THREE.Vector3(-0.7, -0.2, 0.3) };
+
+            // 5. المعدة والأمعاء (Stomach & Intestines)
             const stomachGroup = new THREE.Group();
             stomachGroup.name = 'stomach';
-            const stomachMat = new THREE.MeshPhysicalMaterial({ color: 0xf59e0b, roughness: 0.4, clearcoat: 0.3 });
-            const stomach = new THREE.Mesh(new THREE.CapsuleGeometry(0.7, 1.4, 16, 32), stomachMat);
+            const stomachMat = new THREE.MeshPhysicalMaterial({ color: 0xf59e0b, roughness: 0.4, clearcoat: 0.3, transparent: true, opacity: 1 });
+            const stomach = createCapsuleCompat(0.55, 1.1, 16, 32, stomachMat);
             stomach.rotation.z = Math.PI / 3.5;
-            stomach.position.set(-0.4, -0.6, 0.3);
+            stomach.position.set(0.45, -0.45, 0.3);
 
-            const intestineMat = new THREE.MeshPhysicalMaterial({ color: 0xd97706, roughness: 0.5 });
-            const intestine = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.38, 16, 50), intestineMat);
+            const intestineMat = new THREE.MeshPhysicalMaterial({ color: 0xd97706, roughness: 0.5, transparent: true, opacity: 1 });
+            const intestine = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.36, 16, 50), intestineMat);
             intestine.rotation.x = Math.PI / 2;
             intestine.position.set(0, -1.7, 0.2);
 
@@ -287,15 +515,207 @@
             scene.add(stomachGroup);
             anatomicalParts['stomach'] = { object: stomachGroup, pos: new THREE.Vector3(0, -1.1, 0.2) };
 
+            // 6. الكليتان والحالبان (Kidneys)
+            const kidneysGroup = new THREE.Group();
+            kidneysGroup.name = 'kidneys';
+            const kidneyMat = new THREE.MeshPhysicalMaterial({ color: 0xb91c1c, roughness: 0.3, clearcoat: 0.7, transparent: true, opacity: 1 });
+            const rightKidney = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 24), kidneyMat);
+            rightKidney.position.set(-0.85, -0.9, -0.35);
+            rightKidney.scale.set(0.75, 1.35, 0.6);
+
+            const leftKidney = rightKidney.clone();
+            leftKidney.position.set(0.85, -0.8, -0.35);
+
+            const ureterMat = new THREE.MeshPhysicalMaterial({ color: 0xfde047, roughness: 0.4, transparent: true, opacity: 0.9 });
+            const rightUreter = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 12), ureterMat);
+            rightUreter.position.set(-0.6, -1.6, -0.3);
+            rightUreter.rotation.z = 0.2;
+
+            const leftUreter = rightUreter.clone();
+            leftUreter.position.set(0.6, -1.55, -0.3);
+            leftUreter.rotation.z = -0.2;
+
+            kidneysGroup.add(rightKidney, leftKidney, rightUreter, leftUreter);
+            scene.add(kidneysGroup);
+            anatomicalParts['kidneys'] = { object: kidneysGroup, pos: new THREE.Vector3(0, -1.0, -0.3) };
+
+            // 7. أوردة الذراع (Arm Veins)
             const armGroup = new THREE.Group();
             armGroup.name = 'arm';
-            const veinMat = new THREE.MeshPhysicalMaterial({ color: 0x3b82f6, roughness: 0.2, clearcoat: 0.9 });
-            const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 4.0, 16), veinMat);
-            vein.rotation.z = Math.PI / 3;
-            vein.position.set(3.4, 0, 0.5);
-            armGroup.add(vein);
+            const veinMat = new THREE.MeshPhysicalMaterial({ color: 0x3b82f6, roughness: 0.2, clearcoat: 0.9, transparent: true, opacity: 1 });
+            const mainVein = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 4.0, 16), veinMat);
+            mainVein.rotation.z = Math.PI / 3;
+            mainVein.position.set(3.4, 0, 0.5);
+
+            const medianCubital = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.2, 12), veinMat);
+            medianCubital.rotation.z = -Math.PI / 5;
+            medianCubital.position.set(3.3, 0.2, 0.58);
+
+            armGroup.add(mainVein, medianCubital);
             scene.add(armGroup);
             anatomicalParts['arm'] = { object: armGroup, pos: new THREE.Vector3(3.4, 0, 0.5) };
+        }
+
+        function updateLandmarkPins(partKey) {
+            while (landmarks3DGroup.children.length > 0) {
+                landmarks3DGroup.remove(landmarks3DGroup.children[0]);
+            }
+            if (!showLandmarks3D || !clinicalData[partKey] || !clinicalData[partKey].pins) return;
+
+            const pinGeo = new THREE.SphereGeometry(0.11, 16, 16);
+            const pinMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+            clinicalData[partKey].pins.forEach(pin => {
+                const pinMesh = new THREE.Mesh(pinGeo, pinMat);
+                pinMesh.position.set(pin.pos[0], pin.pos[1], pin.pos[2]);
+                landmarks3DGroup.add(pinMesh);
+            });
+        }
+
+        function toggleLandmarks3D() {
+            showLandmarks3D = !showLandmarks3D;
+            const btn = document.getElementById('landmarksBtn');
+            if (showLandmarks3D) {
+                btn.innerHTML = '📍 <span>نقاط الفحص: مفعلة</span>';
+                btn.className = 'px-3 py-2 bg-blue-900/60 hover:bg-blue-800 text-blue-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-blue-500/40 shadow';
+            } else {
+                btn.innerHTML = '📍 <span>نقاط الفحص: مخفية</span>';
+                btn.className = 'px-3 py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-gray-700 shadow';
+            }
+            updateLandmarkPins(currentFocusedPart);
+        }
+
+        function toggleIsolateMode() {
+            isIsolateMode = !isIsolateMode;
+            const btn = document.getElementById('isolateBtn');
+            if (isIsolateMode) {
+                btn.innerHTML = '🔬 <span>وضع العزل: مفعل</span>';
+                btn.className = 'px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-indigo-400 shadow';
+            } else {
+                btn.innerHTML = '🔬 <span>وضع العزل: متوقف</span>';
+                btn.className = 'px-3 py-2 bg-slate-800 hover:bg-slate-700 text-gray-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-gray-700 shadow';
+            }
+            updateIsolationVisuals();
+        }
+
+        function updateIsolationVisuals() {
+            Object.keys(anatomicalParts).forEach(key => {
+                const group = anatomicalParts[key].object;
+                const isSelected = (key === currentFocusedPart);
+                group.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        child.material.transparent = true;
+                        child.material.opacity = (!isIsolateMode || isSelected) ? (key === 'lungs' ? 0.95 : 1.0) : 0.14;
+                    }
+                });
+            });
+        }
+
+        function setSimulationMode(mode) {
+            simState.mode = mode;
+            const hrEl = document.getElementById('hrValue');
+            const spo2El = document.getElementById('spo2Value');
+            const rrEl = document.getElementById('rrValue');
+            const badgeEl = document.getElementById('simStatusBadge');
+            const dotEl = document.getElementById('monitorDot');
+
+            ['normal', 'bradycardia', 'tachycardia'].forEach(m => {
+                const btn = document.getElementById(`sim-${m}`);
+                if (m === mode) {
+                    btn.className = 'px-1.5 py-1 bg-blue-600 text-white rounded text-[10px] font-bold transition';
+                } else {
+                    btn.className = 'px-1.5 py-1 bg-slate-800 hover:bg-slate-700 text-gray-300 rounded text-[10px] font-medium transition';
+                }
+            });
+
+            if (mode === 'normal') {
+                simState.heartSpeed = 0.007;
+                simState.heartAmp = 0.07;
+                simState.breathSpeed = 0.003;
+                simState.breathAmp = 0.05;
+                hrEl.innerText = '76';
+                hrEl.className = 'text-sm font-black text-emerald-400';
+                spo2El.innerText = '98%';
+                spo2El.className = 'text-sm font-black text-sky-400';
+                rrEl.innerText = '16';
+                badgeEl.innerText = 'مستقر';
+                badgeEl.className = 'text-[10px] px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded';
+                dotEl.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
+            } else if (mode === 'bradycardia') {
+                simState.heartSpeed = 0.0032;
+                simState.heartAmp = 0.05;
+                simState.breathSpeed = 0.0022;
+                simState.breathAmp = 0.04;
+                hrEl.innerText = '48';
+                hrEl.className = 'text-sm font-black text-red-400 animate-pulse';
+                spo2El.innerText = '94%';
+                spo2El.className = 'text-sm font-black text-amber-400';
+                rrEl.innerText = '12';
+                badgeEl.innerText = 'بطء قلب <60';
+                badgeEl.className = 'text-[10px] px-1.5 py-0.5 bg-red-500/30 text-red-300 rounded font-bold';
+                dotEl.className = 'w-2 h-2 rounded-full bg-red-500 animate-ping';
+            } else if (mode === 'tachycardia') {
+                simState.heartSpeed = 0.015;
+                simState.heartAmp = 0.09;
+                simState.breathSpeed = 0.0075;
+                simState.breathAmp = 0.08;
+                hrEl.innerText = '128';
+                hrEl.className = 'text-sm font-black text-amber-400 animate-pulse';
+                spo2El.innerText = '89%';
+                spo2El.className = 'text-sm font-black text-red-400';
+                rrEl.innerText = '28';
+                badgeEl.innerText = 'تسرع / ضيق تنفس';
+                badgeEl.className = 'text-[10px] px-1.5 py-0.5 bg-amber-500/30 text-amber-300 rounded font-bold';
+                dotEl.className = 'w-2 h-2 rounded-full bg-amber-500 animate-ping';
+            }
+        }
+
+        function renderQuiz(partKey) {
+            const quizData = clinicalData[partKey]?.quiz;
+            const qEl = document.getElementById('quizQuestion');
+            const optsEl = document.getElementById('quizOptions');
+            const fbEl = document.getElementById('quizFeedback');
+
+            if (!quizData) return;
+
+            qEl.innerText = quizData.question;
+            optsEl.innerHTML = '';
+            fbEl.classList.add('hidden');
+            fbEl.innerText = '';
+
+            quizData.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-right px-3 py-2 rounded-lg bg-slate-900/90 hover:bg-indigo-900/50 border border-gray-700 text-xs text-gray-200 transition flex items-center justify-between';
+                btn.innerHTML = `<span>${optText}</span><span class="text-gray-500">○</span>`;
+                btn.onclick = () => checkQuizAnswer(partKey, idx, btn);
+                optsEl.appendChild(btn);
+            });
+        }
+
+        function checkQuizAnswer(partKey, selectedIdx, clickedBtn) {
+            const quizData = clinicalData[partKey].quiz;
+            const fbEl = document.getElementById('quizFeedback');
+            const allBtns = document.getElementById('quizOptions').querySelectorAll('button');
+
+            allBtns.forEach((b, i) => {
+                b.disabled = true;
+                if (i === quizData.correct) {
+                    b.className = 'w-full text-right px-3 py-2 rounded-lg bg-emerald-950/80 border border-emerald-500 text-xs text-emerald-200 font-bold flex items-center justify-between';
+                    b.querySelector('span:last-child').innerText = '✔';
+                } else if (i === selectedIdx) {
+                    b.className = 'w-full text-right px-3 py-2 rounded-lg bg-red-950/70 border border-red-500 text-xs text-red-200 flex items-center justify-between';
+                    b.querySelector('span:last-child').innerText = '✖';
+                }
+            });
+
+            fbEl.classList.remove('hidden');
+            if (selectedIdx === quizData.correct) {
+                fbEl.className = 'mt-3 p-2.5 rounded-lg text-xs font-medium leading-relaxed bg-emerald-950/60 text-emerald-200 border border-emerald-700';
+                fbEl.innerText = `✅ ${quizData.explanation}`;
+            } else {
+                fbEl.className = 'mt-3 p-2.5 rounded-lg text-xs font-medium leading-relaxed bg-amber-950/60 text-amber-200 border border-amber-700';
+                fbEl.innerText = `💡 الإجابة الأدق: ${quizData.explanation}`;
+            }
         }
 
         function onDocumentClick(event) {
@@ -309,20 +729,33 @@
             const intersects = raycaster.intersectObjects(scene.children, true);
 
             if (intersects.length > 0) {
-                let hitObject = intersects[0].object;
-                let parentGroup = hitObject;
-                while (parentGroup.parent && parentGroup.parent !== scene) {
-                    parentGroup = parentGroup.parent;
-                }
+                for (let i = 0; i < intersects.length; i++) {
+                    let hitObject = intersects[i].object;
+                    let parentGroup = hitObject;
+                    while (parentGroup.parent && parentGroup.parent !== scene) {
+                        parentGroup = parentGroup.parent;
+                    }
 
-                if (parentGroup && parentGroup.name && clinicalData[parentGroup.name]) {
-                    focusOnPart(parentGroup.name);
+                    if (parentGroup && parentGroup.name && clinicalData[parentGroup.name]) {
+                        focusOnPart(parentGroup.name);
+                        break;
+                    }
                 }
             }
         }
 
         function focusOnPart(partKey) {
             if (!clinicalData[partKey]) return;
+            currentFocusedPart = partKey;
+
+            // تحديث تمييز الأزرار في القائمة الجانبية
+            document.querySelectorAll('.organ-btn').forEach(btn => {
+                btn.className = 'organ-btn px-3 py-2 bg-slate-800/80 hover:bg-blue-600 text-gray-200 text-xs rounded-xl font-medium transition text-right flex items-center justify-between';
+            });
+            const activeBtn = document.getElementById(`btn-${partKey}`);
+            if (activeBtn) {
+                activeBtn.className = 'organ-btn px-3 py-2 bg-blue-600 text-white text-xs rounded-xl font-bold transition text-right flex items-center justify-between shadow-lg shadow-blue-600/30';
+            }
 
             const data = clinicalData[partKey];
             document.getElementById('organCategoryBadge').innerText = `العضو المختار: ${data.badge}`;
@@ -347,10 +780,15 @@
 
             document.getElementById('redFlagsText').innerText = data.redFlags;
 
+            renderQuiz(partKey);
+            updateIsolationVisuals();
+            updateLandmarkPins(partKey);
+
             if (anatomicalParts[partKey]) {
                 const targetPos = anatomicalParts[partKey].pos;
                 let startPos = camera.position.clone();
-                let targetCamPos = new THREE.Vector3(targetPos.x, targetPos.y + 1, targetPos.z + 4.5);
+                let zOffset = (partKey === 'kidneys') ? -4.5 : 4.5;
+                let targetCamPos = new THREE.Vector3(targetPos.x, targetPos.y + 0.8, targetPos.z + zOffset);
                 
                 let progress = 0;
                 function animateCamera() {
@@ -368,11 +806,31 @@
 
         function animate() {
             requestAnimationFrame(animate);
+            const now = Date.now();
+
+            // حركة نبض القلب حسب وضع المحاكاة
             if (anatomicalParts['heart']) {
-                const time = Date.now() * 0.007;
-                const scale = 1 + Math.sin(time) * 0.07;
+                const heartTime = now * simState.heartSpeed;
+                const scale = 1 + Math.sin(heartTime) * simState.heartAmp;
                 anatomicalParts['heart'].object.scale.set(scale, scale, scale);
             }
+
+            // حركة تنفس الرئتين (شهيق وزفير) حسب وضع المحاكاة
+            if (anatomicalParts['lungs']) {
+                const breathTime = now * simState.breathSpeed;
+                const lungScaleX = 1 + Math.sin(breathTime) * simState.breathAmp;
+                const lungScaleY = 1 + Math.sin(breathTime) * (simState.breathAmp * 0.6);
+                anatomicalParts['lungs'].object.scale.set(lungScaleX, lungScaleY, lungScaleX);
+            }
+
+            // وميض نقاط المعالم التشريحية ثلاثية الأبعاد
+            if (landmarks3DGroup && landmarks3DGroup.children.length > 0) {
+                const pinScale = 1 + Math.sin(now * 0.008) * 0.25;
+                landmarks3DGroup.children.forEach(pin => {
+                    pin.scale.set(pinScale, pinScale, pinScale);
+                });
+            }
+
             controls.update();
             renderer.render(scene, camera);
         }
@@ -388,24 +846,33 @@
         }
 
         function resetCamera() {
+            isIsolateMode = false;
+            const btn = document.getElementById('isolateBtn');
+            if (btn) {
+                btn.innerHTML = '🔬 <span>وضع العزل: متوقف</span>';
+                btn.className = 'px-3 py-2 bg-slate-800 hover:bg-slate-700 text-gray-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border border-gray-700 shadow';
+            }
+            updateIsolationVisuals();
             camera.position.set(0, 1.5, 11);
             controls.target.set(0, 0, 0);
         }
 
         function speakCurrentInfo() {
-            const title = document.getElementById('organTitle').innerText;
-            const desc = document.getElementById('organDescription').innerText;
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(`${title}. ${desc}`);
-                utterance.lang = 'ar-SA';
-                window.speechSynthesis.speak(utterance);
-            }
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+
+            const data = clinicalData[currentFocusedPart];
+            if (!data) return;
+
+            const fullText = `${data.title}. ${data.desc}. المعالم التشريحية: ${data.landmarks.join('، ')}. التدخلات التمريضية: ${data.interventions.join('، ')}. تنبيه سريري أحمر: ${data.redFlags}`;
+            const utterance = new SpeechSynthesisUtterance(fullText);
+            utterance.lang = 'ar-SA';
+            window.speechSynthesis.speak(utterance);
         }
 
         function takeSnapshot() {
             const link = document.createElement('a');
-            link.download = 'nursing-clinical-anatomy.png';
+            link.download = `nursing-anatomy-${currentFocusedPart}.png`;
             link.href = renderer.domElement.toDataURL('image/png');
             link.click();
         }
